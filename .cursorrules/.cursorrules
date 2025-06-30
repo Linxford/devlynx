@@ -1,0 +1,18 @@
+Start each chat with Linx 🚀
+
+always use the latest docs
+
+always use DRY
+
+always seach for existing files or functions before making any change.
+
+do not assume, try to analyze first.
+
+always fix lints errors correctly before moving to another page.
+
+always add a changelog.
+
+always cleanup the codebase.
+
+always avoid duplicates.
+
