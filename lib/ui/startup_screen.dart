@@ -10,7 +10,10 @@ import 'widgets/tools_panel.dart';
 import 'widgets/project_notes_dialog.dart';
 import 'widgets/modern_project_card.dart';
 import 'widgets/analytics_dashboard.dart';
+import 'widgets/ai_assistant_panel.dart';
+import 'widgets/voice_control_widget.dart';
 import 'screens/ai_configuration_screen.dart';
+import 'screens/settings_screen.dart';
 
 class StartupScreen extends StatefulWidget {
   const StartupScreen({super.key});
@@ -27,33 +30,94 @@ class _StartupScreenState extends State<StartupScreen>
   String searchQuery = '';
   String selectedFilter = 'all';
   late TabController _tabController;
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+  int _selectedIndex = 0;
+  String _greetingMessage = '';
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
+    
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
+    
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.elasticOut));
+    
+    _initializeAssistant();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _fadeController.dispose();
+    _slideController.dispose();
     super.dispose();
+  }
+  
+  Future<void> _initializeAssistant() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    _fadeController.forward();
+    _slideController.forward();
+    
+    // Generate greeting message
+    final hour = DateTime.now().hour;
+    String timeGreeting;
+    if (hour < 12) {
+      timeGreeting = 'Good morning';
+    } else if (hour < 17) {
+      timeGreeting = 'Good afternoon';
+    } else {
+      timeGreeting = 'Good evening';
+    }
+    
+    setState(() {
+      _greetingMessage = '$timeGreeting, Linxford! Ready to build something amazing today?';
+    });
   }
 
   Future<void> _launch(Project project) async {
-    setState(() {
-      isLaunching = true;
-      launchMessage = '🚀 Launching "${project.name}"...';
-      // Track project launch
-      AnalyticsManager.trackProjectLaunch(project.path, project.type);
+    // Use post-frame callback to prevent setState during frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {
+          isLaunching = true;
+          launchMessage = '🚀 Launching "${project.name}"...';
+        });
+      }
     });
+    
+    // Track project launch
+    AnalyticsManager.trackProjectLaunch(project.path, project.type);
 
     final launcher = context.read<LauncherService>();
     await launcher.launchProject(project);
 
-    setState(() {
-      isLaunching = false;
-      launchMessage = '✅ Launched "${project.name}"';
+    // Use post-frame callback for completion state
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {
+          isLaunching = false;
+          launchMessage = '✅ Launched "${project.name}"';
+        });
+      }
     });
 
     await SessionStorage().saveSession(
@@ -69,8 +133,13 @@ class _StartupScreenState extends State<StartupScreen>
     final launcher = context.read<LauncherService>();
     await launcher.runQuickAction(project, action);
 
-    setState(() {
-      launchMessage = '⚡ Executed "$action" for "${project.name}"';
+    // Use post-frame callback to prevent setState during frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {
+          launchMessage = '⚡ Executed "$action" for "${project.name}"';
+        });
+      }
     });
   }
 
@@ -121,265 +190,34 @@ class _StartupScreenState extends State<StartupScreen>
     final filteredProjects = _getFilteredProjects(projects);
     final projectTypes = _getProjectTypes(projects);
     final lastProject = _getLastProject(projects, session?.lastProject);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('DevLynx Assistant'),
-        centerTitle: true,
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.smart_toy),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const AIConfigurationScreen(),
-                ),
-              );
-            },
-            tooltip: 'AI Configuration',
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              colorScheme.surface,
+              colorScheme.surfaceVariant.withOpacity(0.3),
+              colorScheme.primaryContainer.withOpacity(0.1),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              // Trigger a rebuild to refresh projects
-              setState(() {});
-            },
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.folder), text: 'Projects'),
-            Tab(icon: Icon(Icons.build), text: 'Tools'),
-            Tab(icon: Icon(Icons.analytics), text: 'Analytics'),
-          ],
         ),
-      ),
-      body: Column(
-        children: [
-          // Header Section
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Theme.of(context).colorScheme.primaryContainer,
-                  Theme.of(context).colorScheme.surface,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildModernHeader(context, projects, tools, lastProject),
+              _buildNavigationBar(context),
+              Expanded(
+                child: _buildContent(context, filteredProjects, projectTypes, detailedTools),
               ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.waving_hand, size: 32),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Welcome back, Linxford!',
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          '${projects.length} projects • ${tools.length} tools detected',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Continue Last Project Button
-                if (lastProject != null)
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: isLaunching
-                          ? null
-                          : () => _launch(lastProject),
-                      icon: const Icon(Icons.play_arrow),
-                      label: Text('Continue "${lastProject.displayName}"'),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.all(16),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+              _buildFooter(context),
+            ],
           ),
-
-          // Tab Content
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                // Projects Tab
-                Column(
-                  children: [
-                    // Search and Filter Section
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          // Search Bar
-                          TextField(
-                            decoration: InputDecoration(
-                              hintText: 'Search projects...',
-                              prefixIcon: const Icon(Icons.search),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              filled: true,
-                            ),
-                            onChanged: (value) =>
-                                setState(() => searchQuery = value),
-                          ),
-                          const SizedBox(height: 12),
-
-                          // Filter Chips
-                          SizedBox(
-                            height: 40,
-                            child: ListView(
-                              scrollDirection: Axis.horizontal,
-                              children: [
-                                FilterChip(
-                                  label: const Text('All'),
-                                  selected: selectedFilter == 'all',
-                                  onSelected: (_) =>
-                                      setState(() => selectedFilter = 'all'),
-                                ),
-                                const SizedBox(width: 8),
-                                ...projectTypes.map(
-                                  (type) => Padding(
-                                    padding: const EdgeInsets.only(right: 8),
-                                    child: FilterChip(
-                                      label: Text(type.toUpperCase()),
-                                      selected: selectedFilter == type,
-                                      onSelected: (_) =>
-                                          setState(() => selectedFilter = type),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Projects Grid
-                    Expanded(
-                      child: filteredProjects.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.folder_open,
-                                    size: 64,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.outline,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    searchQuery.isNotEmpty
-                                        ? 'No projects match your search'
-                                        : 'No projects found',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurfaceVariant,
-                                        ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Projects are scanned from ~/Projects and ~/Desktop/Projects',
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.outline,
-                                        ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: GridView.builder(
-                                gridDelegate:
-                                    SliverGridDelegateWithMaxCrossAxisExtent(
-                                      maxCrossAxisExtent: 400,
-                                      childAspectRatio: 2.5,
-                                      crossAxisSpacing: 12,
-                                      mainAxisSpacing: 12,
-                                    ),
-                                itemCount: filteredProjects.length,
-                                itemBuilder: (context, index) {
-                                  final project = filteredProjects[index];
-                                  return ModernProjectCard(
-                                    project: project,
-                                    onTap: () => _launch(project),
-                                    onNotesPressed: () =>
-                                        _showNotesDialog(project),
-                                  );
-                                },
-                              ),
-                            ),
-                    ),
-                  ],
-                ),
-
-                // Tools Tab
-                ToolsPanel(tools: detailedTools),
-
-                // Analytics Tab
-                const AnalyticsDashboard(),
-              ],
-            ),
-          ),
-
-          // Status Bar
-          if (launchMessage != null)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                border: Border(
-                  top: BorderSide(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.outline.withOpacity(0.2),
-                  ),
-                ),
-              ),
-              child: Text(
-                launchMessage!,
-                style: Theme.of(context).textTheme.bodyMedium,
-                textAlign: TextAlign.center,
-              ),
-            ),
-        ],
+        ),
       ),
     );
   }
@@ -390,6 +228,441 @@ class _StartupScreenState extends State<StartupScreen>
     } catch (_) {
       return null;
     }
+  }
+
+  Widget _buildModernHeader(BuildContext context, List<Project> projects, List<String> tools, Project? lastProject) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Main greeting section
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        colorScheme.primary.withOpacity(0.8),
+                        colorScheme.primary.withOpacity(0.6),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colorScheme.primary.withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.lightbulb, color: Colors.white, size: 28),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: SlideTransition(
+                    position: _slideAnimation,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'DevLynx Assistant',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                        Text(
+                          _greetingMessage,
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: colorScheme.onSurfaceVariant,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AIConfigurationScreen(),
+                          ),
+                        );
+                      },
+                      icon: Icon(Icons.psychology, color: colorScheme.onSurfaceVariant),
+                      tooltip: 'AI Configuration',
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SettingsScreen(),
+                          ),
+                        );
+                      },
+                      icon: Icon(Icons.settings, color: colorScheme.onSurfaceVariant),
+                      tooltip: 'Settings',
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            
+            // Stats row
+            Row(
+              children: [
+                _buildStatCard(colorScheme, 'Projects', projects.length.toString(), Icons.folder_outlined),
+                const SizedBox(width: 12),
+                _buildStatCard(colorScheme, 'Tools', tools.length.toString(), Icons.build_outlined),
+                const SizedBox(width: 12),
+                _buildStatCard(colorScheme, 'Session', 'Active', Icons.timer_outlined),
+              ],
+            ),
+            
+            // Continue last project button
+            if (lastProject != null) ...[
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: isLaunching ? null : () => _launch(lastProject),
+                  icon: const Icon(Icons.play_arrow),
+                  label: Text('Continue "${lastProject.displayName}"'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.all(16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard(ColorScheme colorScheme, String label, String value, IconData icon) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          gradient: LinearGradient(
+            colors: [
+              colorScheme.surfaceVariant.withOpacity(0.5),
+              colorScheme.surface.withOpacity(0.8),
+            ],
+          ),
+          border: Border.all(color: colorScheme.outline.withOpacity(0.1)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: colorScheme.primary, size: 16),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavigationBar(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: colorScheme.surface,
+        border: Border.all(color: colorScheme.outline.withOpacity(0.1)),
+      ),
+      child: Row(
+        children: [
+          _buildNavButton(colorScheme, 'Projects', Icons.folder_outlined, 0),
+          _buildNavButton(colorScheme, 'Tools', Icons.build_outlined, 1),
+          _buildNavButton(colorScheme, 'Analytics', Icons.analytics_outlined, 2),
+          _buildNavButton(colorScheme, 'AI Chat', Icons.psychology_outlined, 3),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavButton(ColorScheme colorScheme, String label, IconData icon, int index) {
+    final isSelected = _selectedIndex == index;
+    
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedIndex = index),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: isSelected ? colorScheme.primary : Colors.transparent,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? Colors.white : colorScheme.onSurfaceVariant,
+                size: 20,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: isSelected ? Colors.white : colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, List<Project> filteredProjects, Set<String> projectTypes, List<DetectedTool> detailedTools) {
+    switch (_selectedIndex) {
+      case 0:
+        return _buildProjectsTab(context, filteredProjects, projectTypes);
+      case 1:
+        return ToolsPanel(tools: detailedTools);
+      case 2:
+        return const AnalyticsDashboard();
+      case 3:
+        return AIAssistantPanel(projects: filteredProjects);
+      default:
+        return _buildProjectsTab(context, filteredProjects, projectTypes);
+    }
+  }
+
+  Widget _buildProjectsTab(BuildContext context, List<Project> filteredProjects, Set<String> projectTypes) {
+    return Column(
+      children: [
+        // Search and filter section
+        Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              // Search bar
+              TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search projects...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                ),
+                onChanged: (value) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      setState(() => searchQuery = value);
+                    }
+                  });
+                },
+              ),
+              const SizedBox(height: 12),
+              
+              // Filter chips
+              SizedBox(
+                height: 40,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    FilterChip(
+                      label: const Text('All'),
+                      selected: selectedFilter == 'all',
+                      onSelected: (_) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) {
+                            setState(() => selectedFilter = 'all');
+                          }
+                        });
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    ...projectTypes.map((type) => Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        label: Text(type.toUpperCase()),
+                        selected: selectedFilter == type,
+                        onSelected: (_) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) {
+                              setState(() => selectedFilter = type);
+                            }
+                          });
+                        },
+                      ),
+                    )),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        // Projects grid
+        Expanded(
+          child: filteredProjects.isEmpty
+              ? _buildEmptyState(context)
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final width = constraints.maxWidth;
+                    int crossAxisCount;
+                    double childAspectRatio;
+                    
+                    if (width > 1200) {
+                      crossAxisCount = 4;
+                      childAspectRatio = 2.2;
+                    } else if (width > 800) {
+                      crossAxisCount = 3;
+                      childAspectRatio = 2.0;
+                    } else if (width > 600) {
+                      crossAxisCount = 2;
+                      childAspectRatio = 1.8;
+                    } else {
+                      crossAxisCount = 1;
+                      childAspectRatio = 2.5;
+                    }
+                    
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: GridView.builder(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: crossAxisCount,
+                          childAspectRatio: childAspectRatio,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
+                        itemCount: filteredProjects.length,
+                        itemBuilder: (context, index) {
+                          final project = filteredProjects[index];
+                          return ModernProjectCard(
+                            project: project,
+                            onTap: () => _launch(project),
+                            onNotesPressed: () => _showNotesDialog(project),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.folder_open,
+            size: 64,
+            color: colorScheme.outline,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            searchQuery.isNotEmpty
+                ? 'No projects match your search'
+                : 'No projects found',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Projects are scanned from ~/Projects and ~/Desktop/Projects',
+            style: TextStyle(
+              fontSize: 14,
+              color: colorScheme.outline,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFooter(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(
+            color: colorScheme.outline.withOpacity(0.1),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          if (launchMessage != null) ...[
+            Expanded(
+              child: Text(
+                launchMessage!,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ] else ...[
+            Text(
+              'Ready to start your development session',
+              style: TextStyle(
+                fontSize: 14,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+          const Spacer(),
+          const VoiceControlWidget(),
+        ],
+      ),
+    );
   }
 }
 
@@ -416,7 +689,6 @@ class _ProjectCard extends StatefulWidget {
 
 class _ProjectCardState extends State<_ProjectCard> {
   ProjectNote? _note;
-  bool _loadingNote = true;
 
   @override
   void initState() {
@@ -430,7 +702,6 @@ class _ProjectCardState extends State<_ProjectCard> {
     if (mounted) {
       setState(() {
         _note = note;
-        _loadingNote = false;
       });
     }
   }

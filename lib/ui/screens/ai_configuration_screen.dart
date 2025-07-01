@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../../services/ai_service.dart';
 
 class AIConfigurationScreen extends StatefulWidget {
@@ -16,6 +18,7 @@ class _AIConfigurationScreenState extends State<AIConfigurationScreen>
   final Map<AIProvider, TextEditingController> _modelControllers = {};
   final Map<AIProvider, bool> _isLoading = {};
   final Map<AIProvider, String?> _errors = {};
+  final Map<AIProvider, List<String>> _availableModels = {};
 
   @override
   void initState() {
@@ -53,8 +56,8 @@ class _AIConfigurationScreenState extends State<AIConfigurationScreen>
   Future<void> _loadCurrentConfiguration() async {
     // Load existing configuration if available
     try {
-      // Load configuration from storage - implement this method
-      final config = <String, dynamic>{};
+      // Load configuration from storage using AIService method
+      final config = await AIService.loadStoredConfiguration();
       for (final provider in AIProvider.values) {
         final apiKey = config['${provider.name}_api_key'] as String? ?? '';
         final model =
@@ -69,6 +72,7 @@ class _AIConfigurationScreenState extends State<AIConfigurationScreen>
       if (mounted) setState(() {});
     } catch (e) {
       // Handle configuration loading error
+      print('Error loading AI configuration: $e');
     }
   }
 
@@ -315,22 +319,62 @@ class _AIConfigurationScreenState extends State<AIConfigurationScreen>
         ],
 
         // Model Field
-        Text(
-          'Model',
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+        Row(
+          children: [
+            Text(
+              'Model',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const Spacer(),
+            TextButton.icon(
+              onPressed: () => _fetchAvailableModels(provider),
+              icon: const Text('🔄', style: TextStyle(fontSize: 12)),
+              label: const Text('Fetch Models', style: TextStyle(fontSize: 12)),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
-        TextFormField(
-          controller: _modelControllers[provider],
-          decoration: InputDecoration(
-            hintText:
-                'e.g., ${AIConfiguration.defaultConfigs[provider]?.model}',
-            prefixIcon: const Icon(Icons.memory),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        ),
+        _availableModels[provider]?.isNotEmpty == true
+            ? DropdownButtonFormField<String>(
+                value: _modelControllers[provider]?.text.isNotEmpty == true
+                    ? _modelControllers[provider]?.text
+                    : null,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.memory),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                hint: Text('Select a model'),
+                items: _availableModels[provider]!.map((model) {
+                  return DropdownMenuItem(
+                    value: model,
+                    child: Text(
+                      model,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    _modelControllers[provider]?.text = value;
+                  }
+                },
+              )
+            : TextFormField(
+                controller: _modelControllers[provider],
+                decoration: InputDecoration(
+                  hintText:
+                      'e.g., ${AIConfiguration.defaultConfigs[provider]?.model}',
+                  prefixIcon: const Icon(Icons.memory),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
       ],
     );
   }
@@ -463,6 +507,12 @@ class _AIConfigurationScreenState extends State<AIConfigurationScreen>
           size: size,
           color: const Color(0xFF4285F4),
         );
+      case AIProvider.openrouter:
+        return Icon(
+          Icons.hub,
+          size: size,
+          color: const Color(0xFF7C3AED),
+        );
     }
   }
 
@@ -478,6 +528,8 @@ class _AIConfigurationScreenState extends State<AIConfigurationScreen>
         return const Color(0xFFF55036);
       case AIProvider.gemini:
         return const Color(0xFF4285F4);
+      case AIProvider.openrouter:
+        return const Color(0xFF7C3AED);
     }
   }
 
@@ -493,6 +545,8 @@ class _AIConfigurationScreenState extends State<AIConfigurationScreen>
         return 'Groq';
       case AIProvider.gemini:
         return 'Google Gemini';
+      case AIProvider.openrouter:
+        return 'OpenRouter';
     }
   }
 
@@ -508,6 +562,181 @@ class _AIConfigurationScreenState extends State<AIConfigurationScreen>
         return 'Ultra-fast inference with Llama and Mixtral models';
       case AIProvider.gemini:
         return 'Google\'s multimodal AI for text and code generation';
+      case AIProvider.openrouter:
+        return 'Access multiple AI models through a single API';
+    }
+  }
+
+  Future<void> _fetchAvailableModels(AIProvider provider) async {
+    if (_apiKeyControllers[provider]?.text.isEmpty == true &&
+        provider != AIProvider.ollama) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter your API key first'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading[provider] = true;
+      _errors[provider] = null;
+    });
+
+    try {
+      List<String> models = [];
+      final apiKey = _apiKeyControllers[provider]?.text ?? '';
+
+      switch (provider) {
+        case AIProvider.openai:
+          models = await _fetchOpenAIModels(apiKey);
+          break;
+        case AIProvider.anthropic:
+          models = await _fetchAnthropicModels();
+          break;
+        case AIProvider.ollama:
+          models = await _fetchOllamaModels();
+          break;
+        case AIProvider.groq:
+          models = await _fetchGroqModels(apiKey);
+          break;
+        case AIProvider.gemini:
+          models = await _fetchGeminiModels();
+          break;
+        case AIProvider.openrouter:
+          models = await _fetchOpenRouterModels(apiKey);
+          break;
+      }
+
+      setState(() {
+        _availableModels[provider] = models;
+      });
+
+      if (models.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Found ${models.length} available models'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _errors[provider] = 'Failed to fetch models: ${e.toString()}';
+      });
+    } finally {
+      setState(() {
+        _isLoading[provider] = false;
+      });
+    }
+  }
+
+  Future<List<String>> _fetchOpenAIModels(String apiKey) async {
+    final response = await http.get(
+      Uri.parse('https://api.openai.com/v1/models'),
+      headers: {
+        'Authorization': 'Bearer $apiKey',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final models = (data['data'] as List)
+          .map((model) => model['id'] as String)
+          .where((id) => id.startsWith('gpt-') || id.startsWith('o1-'))
+          .toList();
+      models.sort();
+      return models;
+    } else {
+      throw Exception('Failed to fetch OpenAI models: ${response.statusCode}');
+    }
+  }
+
+  Future<List<String>> _fetchAnthropicModels() async {
+    // Anthropic doesn't have a public models endpoint,
+    // so we return the known available models
+    return [
+      'claude-3-5-haiku-20241022',
+      'claude-3-5-sonnet-20241022',
+      'claude-3-opus-20240229',
+      'claude-3-sonnet-20240229',
+      'claude-3-haiku-20240307',
+    ];
+  }
+
+  Future<List<String>> _fetchOllamaModels() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://localhost:11434/api/tags'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final models = (data['models'] as List? ?? [])
+            .map((model) => model['name'] as String)
+            .toList();
+        models.sort();
+        return models;
+      } else {
+        throw Exception('Failed to connect to Ollama');
+      }
+    } catch (e) {
+      throw Exception('Ollama not running or not installed');
+    }
+  }
+
+  Future<List<String>> _fetchGroqModels(String apiKey) async {
+    final response = await http.get(
+      Uri.parse('https://api.groq.com/openai/v1/models'),
+      headers: {
+        'Authorization': 'Bearer $apiKey',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final models = (data['data'] as List)
+          .map((model) => model['id'] as String)
+          .toList();
+      models.sort();
+      return models;
+    } else {
+      throw Exception('Failed to fetch Groq models: ${response.statusCode}');
+    }
+  }
+
+  Future<List<String>> _fetchGeminiModels() async {
+    // Google Gemini models (known available models)
+    return [
+      'gemini-1.5-flash',
+      'gemini-1.5-flash-8b',
+      'gemini-1.5-pro',
+      'gemini-1.0-pro',
+    ];
+  }
+
+  Future<List<String>> _fetchOpenRouterModels(String apiKey) async {
+    final response = await http.get(
+      Uri.parse('https://openrouter.ai/api/v1/models'),
+      headers: {
+        'Authorization': 'Bearer $apiKey',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final models = (data['data'] as List)
+          .map((model) => model['id'] as String)
+          .toList();
+      models.sort();
+      return models;
+    } else {
+      throw Exception('Failed to fetch OpenRouter models: ${response.statusCode}');
     }
   }
 
@@ -547,6 +776,13 @@ class _AIConfigurationScreenState extends State<AIConfigurationScreen>
           'Supports Gemini Pro and Gemini Pro Vision',
           'Free tier available with rate limits',
           'Best for: Multimodal tasks and code understanding',
+        ];
+      case AIProvider.openrouter:
+        return [
+          'Get your API key from openrouter.ai',
+          'Access Claude, GPT-4, Llama, and many other models',
+          'Pay-per-use pricing with credits',
+          'Best for: Model comparison and flexibility',
         ];
     }
   }

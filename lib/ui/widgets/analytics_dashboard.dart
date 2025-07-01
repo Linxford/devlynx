@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'dart:math' as math;
@@ -83,7 +84,7 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard>
 
     return FadeTransition(
       opacity: _fadeAnimation,
-      child: Container(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -224,52 +225,116 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard>
     final avgSessionTime = _analytics['avg_session_time'] ?? 0.0;
     final totalCommands = _analytics['total_commands'] ?? 0;
 
-    return Row(
-      children: [
-        Expanded(
-          child: _buildMetricCard(
-            colorScheme,
-            'Projects',
-            totalProjects.toString(),
-            Icons.folder_outlined,
-            const Color(0xFF4CAF50),
-            '+${_analytics['projects_growth'] ?? 0}% this week',
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildMetricCard(
-            colorScheme,
-            'Sessions',
-            totalSessions.toString(),
-            Icons.timer_outlined,
-            const Color(0xFF2196F3),
-            '${_analytics['sessions_today'] ?? 0} today',
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildMetricCard(
-            colorScheme,
-            'Avg Time',
-            '${avgSessionTime.toStringAsFixed(1)}h',
-            Icons.schedule_outlined,
-            const Color(0xFFFF9800),
-            'per session',
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildMetricCard(
-            colorScheme,
-            'Commands',
-            totalCommands.toString(),
-            Icons.terminal_outlined,
-            const Color(0xFF9C27B0),
-            '${_analytics['commands_today'] ?? 0} today',
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth > 600;
+        
+        if (isWide) {
+          return Row(
+            children: [
+              Expanded(
+                child: _buildMetricCard(
+                  colorScheme,
+                  'Projects',
+                  totalProjects.toString(),
+                  Icons.folder_outlined,
+                  const Color(0xFF4CAF50),
+                  '+${_analytics['projects_growth'] ?? 0}% this week',
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildMetricCard(
+                  colorScheme,
+                  'Sessions',
+                  totalSessions.toString(),
+                  Icons.timer_outlined,
+                  const Color(0xFF2196F3),
+                  '${_analytics['sessions_today'] ?? 0} today',
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildMetricCard(
+                  colorScheme,
+                  'Avg Time',
+                  '${avgSessionTime.toStringAsFixed(1)}h',
+                  Icons.schedule_outlined,
+                  const Color(0xFFFF9800),
+                  'per session',
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildMetricCard(
+                  colorScheme,
+                  'Commands',
+                  totalCommands.toString(),
+                  Icons.terminal_outlined,
+                  const Color(0xFF9C27B0),
+                  '${_analytics['commands_today'] ?? 0} today',
+                ),
+              ),
+            ],
+          );
+        } else {
+          return Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildMetricCard(
+                      colorScheme,
+                      'Projects',
+                      totalProjects.toString(),
+                      Icons.folder_outlined,
+                      const Color(0xFF4CAF50),
+                      '+${_analytics['projects_growth'] ?? 0}% this week',
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildMetricCard(
+                      colorScheme,
+                      'Sessions',
+                      totalSessions.toString(),
+                      Icons.timer_outlined,
+                      const Color(0xFF2196F3),
+                      '${_analytics['sessions_today'] ?? 0} today',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildMetricCard(
+                      colorScheme,
+                      'Avg Time',
+                      '${avgSessionTime.toStringAsFixed(1)}h',
+                      Icons.schedule_outlined,
+                      const Color(0xFFFF9800),
+                      'per session',
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildMetricCard(
+                      colorScheme,
+                      'Commands',
+                      totalCommands.toString(),
+                      Icons.terminal_outlined,
+                      const Color(0xFF9C27B0),
+                      '${_analytics['commands_today'] ?? 0} today',
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        }
+      },
     );
   }
 

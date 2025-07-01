@@ -134,159 +134,492 @@ class _ProjectNotesDialogState extends State<ProjectNotesDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final colorScheme = Theme.of(context).colorScheme;
+    final isTablet = screenSize.width > 800;
+    final isMobile = screenSize.width < 600;
+
     return Dialog(
+      backgroundColor: Colors.transparent,
       child: Container(
-        width: MediaQuery.of(context).size.width * 0.8,
-        height: MediaQuery.of(context).size.height * 0.7,
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
-              children: [
-                Text(widget.project.icon, style: const TextStyle(fontSize: 24)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Notes for ${widget.project.displayName}',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        widget.project.path,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontFamily: 'monospace',
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close),
-                ),
-              ],
+        width: isMobile 
+            ? screenSize.width * 0.95 
+            : (isTablet ? screenSize.width * 0.7 : screenSize.width * 0.8),
+        height: isMobile 
+            ? screenSize.height * 0.85 
+            : screenSize.height * 0.75,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              colorScheme.surface.withOpacity(0.95),
+              colorScheme.surfaceVariant.withOpacity(0.9),
+              colorScheme.primaryContainer.withOpacity(0.1),
+            ],
+          ),
+          border: Border.all(
+            color: colorScheme.outline.withOpacity(0.15),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.shadow.withOpacity(0.2),
+              blurRadius: 30,
+              offset: const Offset(0, 15),
             ),
-            const SizedBox(height: 24),
+          ],
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(isMobile ? 16 : 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              _buildHeader(context, colorScheme, isMobile),
+              SizedBox(height: isMobile ? 16 : 24),
 
             // Content Input
             Expanded(
-              child: TextField(
-                controller: _contentController,
-                maxLines: null,
-                expands: true,
-                decoration: InputDecoration(
-                  hintText:
-                      'Write your notes here...\n\n• Project ideas\n• TODO items\n• Important commands\n• Debugging notes',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: LinearGradient(
+                    colors: [
+                      colorScheme.surface.withOpacity(0.8),
+                      colorScheme.surfaceVariant.withOpacity(0.6),
+                    ],
                   ),
-                  filled: true,
+                  border: Border.all(
+                    color: colorScheme.outline.withOpacity(0.2),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colorScheme.shadow.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                textAlignVertical: TextAlignVertical.top,
+                child: TextField(
+                  controller: _contentController,
+                  maxLines: null,
+                  expands: true,
+                  decoration: InputDecoration(
+                    hintText: isMobile
+                        ? '📝 Write your notes here...'
+                        : '📝 Write your notes here...\n\n💡 Project ideas\n✅ TODO items\n⚡ Important commands\n🐛 Debugging notes',
+                    hintStyle: TextStyle(
+                      color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+                      fontSize: isMobile ? 14 : 16,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: Colors.transparent,
+                    contentPadding: EdgeInsets.all(isMobile ? 12 : 16),
+                  ),
+                  style: TextStyle(
+                    fontSize: isMobile ? 14 : 16,
+                    height: 1.5,
+                  ),
+                  textAlignVertical: TextAlignVertical.top,
+                ),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: isMobile ? 12 : 16),
 
             // Tags Section
-            Text(
-              'Tags',
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+            Row(
+              children: [
+                const Text('🏷️', style: TextStyle(fontSize: 18)),
+                const SizedBox(width: 8),
+                Text(
+                  'Tags',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: isMobile ? 6 : 8),
 
             // Add Tag Input
             Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _tagController,
-                    decoration: InputDecoration(
-                      hintText: 'Add tag...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      gradient: LinearGradient(
+                        colors: [
+                          colorScheme.surface.withOpacity(0.8),
+                          colorScheme.surfaceVariant.withOpacity(0.6),
+                        ],
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+                      border: Border.all(
+                        color: colorScheme.outline.withOpacity(0.2),
                       ),
                     ),
-                    onSubmitted: (_) => _addTag(),
+                    child: TextField(
+                      controller: _tagController,
+                      decoration: InputDecoration(
+                        hintText: '✨ Add tag...',
+                        hintStyle: TextStyle(
+                          color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: Colors.transparent,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: isMobile ? 12 : 16,
+                          vertical: isMobile ? 10 : 12,
+                        ),
+                      ),
+                      onSubmitted: (_) => _addTag(),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                FilledButton.icon(
-                  onPressed: _addTag,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add'),
+                SizedBox(width: isMobile ? 6 : 8),
+                Tooltip(
+                  message: 'Add new tag',
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          colorScheme.primary,
+                          colorScheme.primary.withOpacity(0.8),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: colorScheme.primary.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: FilledButton(
+                      onPressed: _addTag,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isMobile ? 12 : 16,
+                          vertical: isMobile ? 10 : 12,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('➕', style: TextStyle(fontSize: 14)),
+                          if (!isMobile) ...[
+                            const SizedBox(width: 4),
+                            const Text('Add'),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: isMobile ? 8 : 12),
 
             // Tags Display
             if (_tags.isNotEmpty)
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _tags
-                    .map(
-                      (tag) => Chip(
-                        label: Text(tag),
-                        deleteIcon: const Icon(Icons.close, size: 16),
-                        onDeleted: () => _removeTag(tag),
-                      ),
-                    )
-                    .toList(),
+              Container(
+                padding: EdgeInsets.all(isMobile ? 8 : 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: colorScheme.surfaceVariant.withOpacity(0.3),
+                  border: Border.all(
+                    color: colorScheme.outline.withOpacity(0.1),
+                  ),
+                ),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _tags
+                      .map(
+                        (tag) => Tooltip(
+                          message: 'Remove tag: $tag',
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  colorScheme.primaryContainer.withOpacity(0.8),
+                                  colorScheme.primaryContainer.withOpacity(0.6),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: colorScheme.primary.withOpacity(0.3),
+                                width: 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: colorScheme.primary.withOpacity(0.1),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Chip(
+                              label: Text(
+                                tag,
+                                style: TextStyle(
+                                  color: colorScheme.onPrimaryContainer,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: isMobile ? 12 : 13,
+                                ),
+                              ),
+                              deleteIcon: const Text('❌', style: TextStyle(fontSize: 12)),
+                              onDeleted: () => _removeTag(tag),
+                              backgroundColor: Colors.transparent,
+                              side: BorderSide.none,
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
               ),
-            const SizedBox(height: 24),
+            SizedBox(height: isMobile ? 16 : 24),
 
             // Action Buttons
-            Row(
-              children: [
-                if (widget.existingNote != null)
-                  TextButton.icon(
-                    onPressed: _isSaving ? null : _deleteNote,
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    label: const Text(
-                      'Delete',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  ),
-                const Spacer(),
-                TextButton(
-                  onPressed: _isSaving
-                      ? null
-                      : () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
+            _buildActionButtons(context, colorScheme, isMobile),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, ColorScheme colorScheme, bool isMobile) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                colorScheme.primary.withOpacity(0.8),
+                colorScheme.primary.withOpacity(0.6),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: colorScheme.primary.withOpacity(0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Text(
+            widget.project.icon,
+            style: TextStyle(fontSize: isMobile ? 20 : 24),
+          ),
+        ),
+        SizedBox(width: isMobile ? 8 : 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Notes for ${widget.project.displayName}',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: isMobile ? 18 : 22,
+                  letterSpacing: -0.5,
                 ),
-                const SizedBox(width: 12),
-                FilledButton.icon(
-                  onPressed: _isSaving ? null : _saveNote,
-                  icon: _isSaving
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.save),
-                  label: Text(_isSaving ? 'Saving...' : 'Save'),
+              ),
+              if (!isMobile)
+                Tooltip(
+                  message: widget.project.path,
+                  child: Text(
+                    widget.project.path,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        Tooltip(
+          message: 'Close dialog',
+          child: Container(
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceVariant.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: colorScheme.outline.withOpacity(0.2),
+              ),
+            ),
+            child: IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Text('❌', style: TextStyle(fontSize: 16)),
+              padding: EdgeInsets.all(isMobile ? 8 : 12),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons(BuildContext context, ColorScheme colorScheme, bool isMobile) {
+    return Row(
+      children: [
+        if (widget.existingNote != null)
+          Tooltip(
+            message: 'Delete this note permanently',
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.red.withOpacity(0.1),
+                    Colors.red.withOpacity(0.05),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.red.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: TextButton(
+                onPressed: _isSaving ? null : _deleteNote,
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 12 : 16,
+                    vertical: isMobile ? 8 : 12,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('🗑️', style: TextStyle(fontSize: 16)),
+                    if (!isMobile) ...[
+                      const SizedBox(width: 6),
+                      const Text(
+                        'Delete',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        const Spacer(),
+        Tooltip(
+          message: 'Cancel without saving',
+          child: Container(
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceVariant.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: colorScheme.outline.withOpacity(0.2),
+              ),
+            ),
+            child: TextButton(
+              onPressed: _isSaving
+                  ? null
+                  : () => Navigator.of(context).pop(),
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 12 : 16,
+                  vertical: isMobile ? 8 : 12,
+                ),
+              ),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: isMobile ? 8 : 12),
+        Tooltip(
+          message: _isSaving ? 'Saving note...' : 'Save note',
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  colorScheme.primary,
+                  colorScheme.primary.withOpacity(0.8),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.primary.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
-          ],
+            child: FilledButton(
+              onPressed: _isSaving ? null : _saveNote,
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 12 : 20,
+                  vertical: isMobile ? 8 : 12,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _isSaving
+                      ? SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('💾', style: TextStyle(fontSize: 16)),
+                  if (!isMobile) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      _isSaving ? 'Saving...' : 'Save',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 }

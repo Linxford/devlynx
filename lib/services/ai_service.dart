@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import '../data/project_scanner.dart';
 import '../data/analytics_manager.dart';
 
-enum AIProvider { openai, anthropic, ollama, groq, gemini }
+enum AIProvider { openai, anthropic, ollama, groq, gemini, openrouter }
 
 class AIConfiguration {
   final AIProvider provider;
@@ -48,6 +48,12 @@ class AIConfiguration {
       baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
       model: 'gemini-1.5-flash',
     ),
+    AIProvider.openrouter: AIConfiguration(
+      provider: AIProvider.openrouter,
+      apiKey: '',
+      baseUrl: 'https://openrouter.ai/api/v1',
+      model: 'anthropic/claude-3.5-sonnet',
+    ),
   };
 }
 
@@ -75,6 +81,11 @@ class AIService {
 
       final apiKey = config['${provider.name}_api_key'] as String?;
       _providerAvailability[provider] = apiKey?.isNotEmpty == true;
+      
+      // If we have a valid API key, this provider is available
+      if (apiKey?.isNotEmpty == true) {
+        print('Found API key for ${provider.name}, marking as available');
+      }
     }
   }
 
@@ -112,22 +123,32 @@ class AIService {
   static Future<void> _loadConfiguration() async {
     final config = await loadStoredConfiguration();
 
-    // Find the first available provider
+    // Find the first available provider with configuration
     for (final provider in AIProvider.values) {
-      if (_providerAvailability[provider] == true) {
-        final apiKey = config['${provider.name}_api_key'] as String? ?? '';
-        final model =
-            config['${provider.name}_model'] as String? ??
-            AIConfiguration.defaultConfigs[provider]!.model;
-
+      final apiKey = config['${provider.name}_api_key'] as String? ?? '';
+      final model = config['${provider.name}_model'] as String? ?? 
+                   AIConfiguration.defaultConfigs[provider]?.model ?? '';
+      
+      // For Ollama, we don't need an API key
+      // For other providers, we need a valid API key
+      bool hasValidConfig = provider == AIProvider.ollama 
+          ? _providerAvailability[provider] == true
+          : apiKey.isNotEmpty;
+      
+      if (hasValidConfig && model.isNotEmpty) {
         _currentConfig = AIConfiguration(
           provider: provider,
           apiKey: apiKey,
           baseUrl: AIConfiguration.defaultConfigs[provider]?.baseUrl,
           model: model,
         );
+        print('Loaded configuration for ${provider.name} with model: $model');
         break;
       }
+    }
+    
+    if (_currentConfig == null) {
+      print('No valid AI configuration found. Please configure an AI provider.');
     }
   }
 
@@ -306,6 +327,8 @@ Example: ["Review yesterday's code", "Try a new debugging technique", "Update pr
         return await _makeGroqRequest(prompt);
       case AIProvider.gemini:
         return await _makeGeminiRequest(prompt);
+      case AIProvider.openrouter:
+        return await _makeOpenRouterRequest(prompt);
     }
   }
 
@@ -426,6 +449,33 @@ Example: ["Review yesterday's code", "Try a new debugging technique", "Update pr
 
     final data = json.decode(response.body);
     return data['candidates'][0]['content']['parts'][0]['text'] as String;
+  }
+
+  static Future<String> _makeOpenRouterRequest(String prompt) async {
+    final response = await http.post(
+      Uri.parse('${_currentConfig!.baseUrl}/chat/completions'),
+      headers: {
+        'Authorization': 'Bearer ${_currentConfig!.apiKey}',
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://devlynx.dev',
+        'X-Title': 'DevLynx AI Assistant',
+      },
+      body: json.encode({
+        'model': _currentConfig!.model,
+        'messages': [
+          {'role': 'user', 'content': prompt},
+        ],
+        'max_tokens': 300,
+        'temperature': 0.7,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw AIException('OpenRouter API error: ${response.statusCode}');
+    }
+
+    final data = json.decode(response.body);
+    return data['choices'][0]['message']['content'] as String;
   }
 
   static dynamic _parseJsonResponse(String response) {
@@ -565,6 +615,117 @@ Example: ["Review yesterday's code", "Try a new debugging technique", "Update pr
           'Format',
         ];
     }
+  }
+
+  /// Process a query from the user and return an AI response
+  static Future<String> processQuery(String query, [List<Project>? projects]) async {
+    if (!isConfigured) {
+      return 'AI is not configured yet. Please set up your API key in the settings.';
+    }
+
+    try {
+      final prompt = '''
+You are DevLynx, an AI assistant for developers. Answer this query based on the context:
+
+User Query: $query
+
+Available Projects: ${projects?.map((p) => '${p.name} (${p.type})').join(', ') ?? 'None'}
+
+Provide a helpful, concise response (max 2-3 sentences). Be encouraging and actionable.
+''';
+
+      final response = await _makeAIRequest(prompt);
+      return response.trim();
+    } catch (e) {
+      // Fallback to rule-based responses
+      return _generateFallbackResponse(query, projects);
+    }
+  }
+
+  /// Generate workflow suggestions based on current projects
+  static Future<List<String>> generateWorkflowSuggestions(List<Project> projects) async {
+    if (!isConfigured) {
+      return _getDefaultWorkflowSuggestions(projects);
+    }
+
+    try {
+      final prompt = '''
+Generate 5 workflow suggestions for a developer with these projects:
+
+${projects.map((p) => '- ${p.name} (${p.type})').join('\n')}
+
+Provide suggestions as a JSON array of strings. Each suggestion should be:
+- 3-5 words max
+- Actionable
+- Relevant to their current projects
+
+Example: ["Continue React project", "Update dependencies", "Write unit tests", "Review code quality", "Plan next features"]
+''';
+
+      final response = await _makeAIRequest(prompt);
+      final suggestions = _parseJsonResponse(response) as List<dynamic>?;
+      
+      return suggestions?.cast<String>().take(5).toList() ?? 
+          _getDefaultWorkflowSuggestions(projects);
+    } catch (e) {
+      return _getDefaultWorkflowSuggestions(projects);
+    }
+  }
+
+  static String _generateFallbackResponse(String query, List<Project>? projects) {
+    final queryLower = query.toLowerCase();
+    
+    if (queryLower.contains('project') || queryLower.contains('work on')) {
+      if (projects != null && projects.isNotEmpty) {
+        final projectNames = projects.take(3).map((p) => p.name).join(', ');
+        return 'Based on your current projects ($projectNames), I\'d suggest focusing on the one with the most recent activity. Would you like me to help you prioritize?';
+      }
+      return 'You have several interesting projects! Let me help you choose which one to work on today.';
+    }
+    
+    if (queryLower.contains('help') || queryLower.contains('assist')) {
+      return 'I\'m here to help with your development workflow! I can suggest projects to work on, help with productivity insights, or provide technical guidance.';
+    }
+    
+    if (queryLower.contains('productivity') || queryLower.contains('workflow')) {
+      return 'To boost your productivity, consider: 1) Setting focused work sessions, 2) Using the Pomodoro technique, 3) Regularly committing your progress, and 4) Taking breaks between coding sessions.';
+    }
+    
+    if (queryLower.contains('suggest') || queryLower.contains('recommend')) {
+      return 'Based on your development patterns, I recommend: Focus on one project at a time, keep your dependencies updated, and maintain good documentation.';
+    }
+    
+    return 'That\'s a great question! I\'m here to help with your development workflow and project management.';
+  }
+
+  static List<String> _getDefaultWorkflowSuggestions(List<Project> projects) {
+    if (projects.isEmpty) {
+      return [
+        'Create your first project',
+        'Set up development environment',
+        'Explore project templates',
+        'Learn a new technology',
+        'Plan your coding goals',
+      ];
+    }
+    
+    final suggestions = <String>[];
+    
+    // Add project-specific suggestions
+    for (final project in projects.take(2)) {
+      suggestions.add('Continue ${project.name}');
+    }
+    
+    // Add general suggestions
+    suggestions.addAll([
+      'Review recent commits',
+      'Update dependencies',
+      'Write documentation',
+      'Run tests',
+      'Backup your work',
+    ]);
+    
+    return suggestions.take(5).toList();
   }
 }
 

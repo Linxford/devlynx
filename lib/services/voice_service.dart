@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/services.dart';
 import 'ai_service.dart';
 
 class VoiceService {
-  static const MethodChannel _channel = MethodChannel('devlynx/voice');
   static bool _isListening = false;
   static bool _isInitialized = false;
   static StreamController<String>? _speechController;
@@ -14,89 +12,113 @@ class VoiceService {
     if (_isInitialized) return;
 
     try {
-      // Check if speech recognition is available
-      final bool available =
-          await _channel.invokeMethod('checkAvailability') ?? false;
-
-      if (available) {
-        await _channel.invokeMethod('initialize');
-        _speechController = StreamController<String>.broadcast();
-        _commandController = StreamController<VoiceCommand>.broadcast();
-        _isInitialized = true;
-
-        // Set up method call handler
-        _channel.setMethodCallHandler(_handleMethodCall);
-      } else {
-        print('Speech recognition not available on this platform');
-      }
+      // Always use fallback initialization for Linux
+      await _initializeFallback();
     } catch (e) {
       print('Voice service initialization error: $e');
       _isInitialized = false;
     }
   }
 
-  static Future<void> _handleMethodCall(MethodCall call) async {
-    switch (call.method) {
-      case 'onSpeechResult':
-        final String text = call.arguments as String;
-        _speechController?.add(text);
-        await _processVoiceCommand(text);
-        break;
-      case 'onSpeechError':
-        final String error = call.arguments as String;
-        print('Speech recognition error: $error');
-        break;
+  static Future<void> _initializeFallback() async {
+    try {
+      // Initialize controllers for basic functionality
+      _speechController = StreamController<String>.broadcast();
+      _commandController = StreamController<VoiceCommand>.broadcast();
+      
+      // Check if TTS is available on Linux
+      if (Platform.isLinux) {
+        try {
+          // Check for espeak-ng or speech-dispatcher
+          final result = await Process.run('which', ['espeak-ng']);
+          if (result.exitCode == 0) {
+            _isInitialized = true;
+            print('Voice service initialized with espeak-ng fallback');
+            return;
+          }
+          
+          final result2 = await Process.run('which', ['espeak']);
+          if (result2.exitCode == 0) {
+            _isInitialized = true;
+            print('Voice service initialized with espeak fallback');
+            return;
+          }
+          
+          final result3 = await Process.run('which', ['spd-say']);
+          if (result3.exitCode == 0) {
+            _isInitialized = true;
+            print('Voice service initialized with speech-dispatcher fallback');
+            return;
+          }
+        } catch (e) {
+          print('TTS not available: $e');
+        }
+      }
+      
+      // Basic initialization without TTS
+      _isInitialized = true;
+      print('Voice service initialized in limited mode (no TTS available)');
+    } catch (e) {
+      print('Fallback voice service initialization failed: $e');
+      _isInitialized = false;
     }
   }
 
   static Future<bool> startListening() async {
     if (!_isInitialized || _isListening) return false;
 
-    try {
-      final bool success =
-          await _channel.invokeMethod('startListening') ?? false;
-      _isListening = success;
-      return success;
-    } catch (e) {
-      print('Error starting voice recognition: $e');
-      return false;
-    }
+    // For Linux, we don't have speech recognition yet
+    // This is a placeholder for future implementation
+    print('Voice recognition not available on Linux yet');
+    return false;
   }
 
   static Future<bool> stopListening() async {
     if (!_isInitialized || !_isListening) return false;
 
-    try {
-      final bool success =
-          await _channel.invokeMethod('stopListening') ?? false;
-      _isListening = !success;
-      return success;
-    } catch (e) {
-      print('Error stopping voice recognition: $e');
-      return false;
-    }
+    _isListening = false;
+    return true;
   }
 
   static Future<bool> speak(String text) async {
     if (!_isInitialized) return false;
 
     try {
-      // Try using system TTS first
-      await _channel.invokeMethod('speak', {'text': text});
-      return true;
-    } catch (e) {
-      // Fallback to espeak on Linux
+      // Use espeak-ng on Linux
       if (Platform.isLinux) {
         try {
-          await Process.run('espeak', [text]);
-          return true;
+          final result = await Process.run('espeak-ng', [text]);
+          return result.exitCode == 0;
         } catch (e) {
-          print('Espeak not available: $e');
+          // Try espeak as fallback
+          try {
+            final result = await Process.run('espeak', [text]);
+            return result.exitCode == 0;
+          } catch (e2) {
+            // Try speech-dispatcher as final fallback
+            try {
+              final result = await Process.run('spd-say', [text]);
+              return result.exitCode == 0;
+            } catch (e3) {
+              print('TTS not available: espeak-ng, espeak, and spd-say not found');
+            }
+          }
         }
       }
+      print('Text-to-speech not available for this platform');
+      return false;
+    } catch (e) {
       print('Text-to-speech error: $e');
       return false;
     }
+  }
+
+  // Method to manually trigger voice commands for testing
+  static Future<void> simulateVoiceCommand(String text) async {
+    if (!_isInitialized) return;
+    
+    _speechController?.add(text);
+    await _processVoiceCommand(text);
   }
 
   static Stream<String> get speechStream =>

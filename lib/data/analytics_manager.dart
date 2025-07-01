@@ -347,7 +347,6 @@ class AnalyticsManager {
   ) {
     final now = DateTime.now();
     final weekStart = now.subtract(Duration(days: now.weekday - 1));
-    final weekEnd = weekStart.add(Duration(days: 6));
 
     int totalLaunches = 0;
     int activeDays = 0;
