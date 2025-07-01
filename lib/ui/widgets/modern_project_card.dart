@@ -10,11 +10,11 @@ class ModernProjectCard extends StatefulWidget {
   final VoidCallback? onNotesPressed;
 
   const ModernProjectCard({
-    Key? key,
+    super.key,
     required this.project,
     required this.onTap,
     this.onNotesPressed,
-  }) : super(key: key);
+  });
 
   @override
   State<ModernProjectCard> createState() => _ModernProjectCardState();
