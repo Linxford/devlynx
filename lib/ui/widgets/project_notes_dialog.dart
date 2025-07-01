@@ -155,7 +155,7 @@ class _ProjectNotesDialogState extends State<ProjectNotesDialog> {
             end: Alignment.bottomRight,
             colors: [
               colorScheme.surface.withOpacity(0.95),
-              colorScheme.surfaceVariant.withOpacity(0.9),
+              colorScheme.surfaceContainerHighest.withOpacity(0.9),
               colorScheme.primaryContainer.withOpacity(0.1),
             ],
           ),
@@ -188,7 +188,7 @@ class _ProjectNotesDialogState extends State<ProjectNotesDialog> {
                   gradient: LinearGradient(
                     colors: [
                       colorScheme.surface.withOpacity(0.8),
-                      colorScheme.surfaceVariant.withOpacity(0.6),
+                      colorScheme.surfaceContainerHighest.withOpacity(0.6),
                     ],
                   ),
                   border: Border.all(
@@ -259,7 +259,7 @@ class _ProjectNotesDialogState extends State<ProjectNotesDialog> {
                       gradient: LinearGradient(
                         colors: [
                           colorScheme.surface.withOpacity(0.8),
-                          colorScheme.surfaceVariant.withOpacity(0.6),
+                          colorScheme.surfaceContainerHighest.withOpacity(0.6),
                         ],
                       ),
                       border: Border.all(
@@ -341,7 +341,7 @@ class _ProjectNotesDialogState extends State<ProjectNotesDialog> {
                 padding: EdgeInsets.all(isMobile ? 8 : 12),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  color: colorScheme.surfaceVariant.withOpacity(0.3),
+                  color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
                   border: Border.all(
                     color: colorScheme.outline.withOpacity(0.1),
                   ),
@@ -466,7 +466,7 @@ class _ProjectNotesDialogState extends State<ProjectNotesDialog> {
           message: 'Close dialog',
           child: Container(
             decoration: BoxDecoration(
-              color: colorScheme.surfaceVariant.withOpacity(0.5),
+              color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: colorScheme.outline.withOpacity(0.2),
@@ -535,7 +535,7 @@ class _ProjectNotesDialogState extends State<ProjectNotesDialog> {
           message: 'Cancel without saving',
           child: Container(
             decoration: BoxDecoration(
-              color: colorScheme.surfaceVariant.withOpacity(0.5),
+              color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: colorScheme.outline.withOpacity(0.2),

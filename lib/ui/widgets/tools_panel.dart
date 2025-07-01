@@ -69,7 +69,7 @@ class ToolsPanel extends StatelessWidget {
               end: Alignment.bottomRight,
               colors: [
                 colorScheme.surface.withOpacity(0.9),
-                colorScheme.surfaceVariant.withOpacity(0.8),
+                colorScheme.surfaceContainerHighest.withOpacity(0.8),
               ],
             ),
             border: Border.all(

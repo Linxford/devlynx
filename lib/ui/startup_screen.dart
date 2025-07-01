@@ -201,7 +201,7 @@ class _StartupScreenState extends State<StartupScreen>
             end: Alignment.bottomRight,
             colors: [
               colorScheme.surface,
-              colorScheme.surfaceVariant.withOpacity(0.3),
+              colorScheme.surfaceContainerHighest.withOpacity(0.3),
               colorScheme.primaryContainer.withOpacity(0.1),
             ],
           ),
@@ -365,7 +365,7 @@ class _StartupScreenState extends State<StartupScreen>
           borderRadius: BorderRadius.circular(8),
           gradient: LinearGradient(
             colors: [
-              colorScheme.surfaceVariant.withOpacity(0.5),
+              colorScheme.surfaceContainerHighest.withOpacity(0.5),
               colorScheme.surface.withOpacity(0.8),
             ],
           ),

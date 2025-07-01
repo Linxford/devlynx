@@ -338,7 +338,7 @@ class _AIConfigurationScreenState extends State<AIConfigurationScreen>
         const SizedBox(height: 8),
         _availableModels[provider]?.isNotEmpty == true
             ? DropdownButtonFormField<String>(
-                value: _modelControllers[provider]?.text.isNotEmpty == true
+                initialValue: _modelControllers[provider]?.text.isNotEmpty == true
                     ? _modelControllers[provider]?.text
                     : null,
                 decoration: InputDecoration(
@@ -385,7 +385,7 @@ class _AIConfigurationScreenState extends State<AIConfigurationScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceVariant.withOpacity(0.3),
+        color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(

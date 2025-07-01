@@ -135,7 +135,7 @@ class _ModernProjectCardState extends State<ModernProjectCard>
                             end: Alignment.bottomRight,
                             colors: [
                               colorScheme.surface.withValues(alpha: 0.9),
-                              colorScheme.surfaceVariant.withValues(alpha: 0.8),
+                              colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
                             ],
                           ),
                           border: Border.all(
@@ -271,7 +271,7 @@ class _ModernProjectCardState extends State<ModernProjectCard>
           message: 'Quick actions for ${widget.project.name}',
           child: Container(
             decoration: BoxDecoration(
-              color: colorScheme.surfaceVariant.withOpacity(0.5),
+              color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: colorScheme.outline.withOpacity(0.2),
@@ -395,7 +395,7 @@ class _ModernProjectCardState extends State<ModernProjectCard>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceVariant.withOpacity(0.5),
+              color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: colorScheme.outline.withOpacity(0.2),

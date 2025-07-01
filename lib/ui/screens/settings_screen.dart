@@ -51,7 +51,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             end: Alignment.bottomRight,
             colors: [
               colorScheme.surface.withValues(alpha: 0.95),
-              colorScheme.surfaceVariant.withValues(alpha: 0.9),
+              colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
             ],
           ),
         ),
@@ -513,7 +513,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
       ),
       child: DropdownButtonFormField<String>(
-        value: _settings.language,
+        initialValue: _settings.language,
         decoration: const InputDecoration(
           border: InputBorder.none,
           contentPadding: EdgeInsets.zero,

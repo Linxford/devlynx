@@ -24,7 +24,7 @@ class _AIAssistantPanelState extends State<AIAssistantPanel>
   final TextEditingController _queryController = TextEditingController();
   final List<ChatMessage> _messages = [];
   bool _isProcessing = false;
-  String _currentSuggestion = '';
+  final String _currentSuggestion = '';
   List<String> _quickSuggestions = [];
 
   @override
@@ -155,7 +155,7 @@ class _AIAssistantPanelState extends State<AIAssistantPanel>
           end: Alignment.bottomRight,
           colors: [
             colorScheme.surface.withValues(alpha: 0.95),
-            colorScheme.surfaceVariant.withValues(alpha: 0.9),
+            colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
             colorScheme.primaryContainer.withValues(alpha: 0.1),
           ],
         ),
@@ -362,7 +362,7 @@ class _AIAssistantPanelState extends State<AIAssistantPanel>
               decoration: BoxDecoration(
                 color: isUser 
                     ? colorScheme.primary 
-                    : colorScheme.surfaceVariant.withOpacity(0.5),
+                    : colorScheme.surfaceContainerHighest.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(

@@ -5,7 +5,7 @@ import 'dart:math' as math;
 import '../../data/analytics_manager.dart';
 
 class AnalyticsDashboard extends StatefulWidget {
-  const AnalyticsDashboard({Key? key}) : super(key: key);
+  const AnalyticsDashboard({super.key});
 
   @override
   State<AnalyticsDashboard> createState() => _AnalyticsDashboardState();
@@ -137,9 +137,9 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard>
             borderRadius: BorderRadius.circular(12),
             gradient: LinearGradient(
               colors: [
-                colorScheme.surfaceVariant.withValues(alpha: 0.3),
-                colorScheme.surfaceVariant.withValues(alpha: 0.1),
-                colorScheme.surfaceVariant.withValues(alpha: 0.3),
+                colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                colorScheme.surfaceContainerHighest.withValues(alpha: 0.1),
+                colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               ],
               stops: [0.0, _pulseAnimation.value, 1.0],
             ),
@@ -355,7 +355,7 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard>
           end: Alignment.bottomRight,
           colors: [
             colorScheme.surface.withOpacity(0.9),
-            colorScheme.surfaceVariant.withOpacity(0.8),
+            colorScheme.surfaceContainerHighest.withOpacity(0.8),
           ],
         ),
         border: Border.all(color: colorScheme.outline.withOpacity(0.1)),
@@ -433,7 +433,7 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard>
           end: Alignment.bottomRight,
           colors: [
             colorScheme.surface.withOpacity(0.9),
-            colorScheme.surfaceVariant.withOpacity(0.8),
+            colorScheme.surfaceContainerHighest.withOpacity(0.8),
           ],
         ),
         border: Border.all(color: colorScheme.outline.withOpacity(0.1)),
@@ -465,7 +465,7 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard>
   Widget _buildChartToggle(ColorScheme colorScheme) {
     return Container(
       decoration: BoxDecoration(
-        color: colorScheme.surfaceVariant.withOpacity(0.5),
+        color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
