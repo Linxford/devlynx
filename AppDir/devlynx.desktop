@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=DevLynx
+Comment=AI-Powered Developer Productivity Launcher
+Exec=devlynx
+Icon=devlynx
+Categories=Development;Utility;
+Terminal=false
+StartupWMClass=devlynx
+MimeType=
+Keywords=developer;productivity;ai;launcher;coding;programming;
+StartupNotify=true

@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Get the directory where this AppImage is located
+HERE="$(dirname "$(readlink -f "${0}")")"
+
+# Set up environment
+export LD_LIBRARY_PATH="${HERE}/usr/bin/lib:${LD_LIBRARY_PATH}"
+export PATH="${HERE}/usr/bin:${PATH}"
+
+# Change to the application directory
+cd "${HERE}/usr/bin"
+
+# Run the application
+exec "${HERE}/usr/bin/devlynx" "$@"
